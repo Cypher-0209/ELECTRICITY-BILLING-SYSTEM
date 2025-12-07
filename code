@@ -1,0 +1,122 @@
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.util.Scanner;
+
+public class ElectricityBillingSystem {
+
+    // ============================
+    // DATABASE CONNECTION METHOD
+    // ============================
+    public static Connection getConnection() {
+        String url = "jdbc:mysql://localhost:3306/electricity_db";
+        String user = "root";
+        String password = "your_password"; // change this
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            return DriverManager.getConnection(url, user, password);
+        } catch (Exception e) {
+            System.out.println("Database Connection Failed!");
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    // ============================
+    // ELECTRICITY BILL CLASS
+    // ============================
+    static class ElectricityBill {
+
+        String customerName;
+        int customerId;
+        double units;
+        double totalBill;
+
+        void inputDetails() {
+            Scanner sc = new Scanner(System.in);
+
+            System.out.print("Enter Customer ID: ");
+            customerId = sc.nextInt();
+            sc.nextLine();
+
+            System.out.print("Enter Customer Name: ");
+            customerName = sc.nextLine();
+
+            System.out.print("Enter Units Consumed: ");
+            units = sc.nextDouble();
+        }
+
+        void calculateBill() {
+            if (units <= 100) {
+                totalBill = units * 5;
+            } else if (units <= 200) {
+                totalBill = (100 * 5) + (units - 100) * 7;
+            } else if (units <= 300) {
+                totalBill = (100 * 5) + (100 * 7) + (units - 200) * 10;
+            } else {
+                totalBill = (100 * 5) + (100 * 7) + (100 * 10) + (units - 300) * 12;
+            }
+
+            totalBill += 50; // fixed charge
+        }
+
+        void displayBill() {
+            System.out.println("\n------- ELECTRICITY BILL -------");
+            System.out.println("Customer ID      : " + customerId);
+            System.out.println("Customer Name    : " + customerName);
+            System.out.println("Units Consumed   : " + units);
+            System.out.println("Total Bill (Rs.) : " + totalBill);
+            System.out.println("--------------------------------");
+        }
+    }
+
+    // ============================
+    // DAO CLASS FOR DATABASE SAVE
+    // ============================
+    static class ElectricityBillDAO {
+
+        public boolean saveBill(ElectricityBill bill) {
+
+            String query = "INSERT INTO bills (customer_id, customer_name, units, total_bill) VALUES (?, ?, ?, ?)";
+
+            try (Connection con = ElectricityBillingSystem.getConnection();
+                 PreparedStatement pst = con.prepareStatement(query)) {
+
+                pst.setInt(1, bill.customerId);
+                pst.setString(2, bill.customerName);
+                pst.setDouble(3, bill.units);
+                pst.setDouble(4, bill.totalBill);
+
+                pst.executeUpdate();
+                return true;
+
+            } catch (Exception e) {
+                System.out.println("Error Saving Bill!");
+                e.printStackTrace();
+                return false;
+            }
+        }
+    }
+
+    // ============================
+    // MAIN METHOD
+    // ============================
+    public static void main(String[] args) {
+
+        ElectricityBill bill = new ElectricityBill();
+        ElectricityBillDAO dao = new ElectricityBillDAO();
+
+        bill.inputDetails();
+        bill.calculateBill();
+        bill.displayBill();
+
+        boolean saved = dao.saveBill(bill);
+
+        if (saved) {
+            System.out.println("Bill saved to database successfully!");
+        } else {
+            System.out.println("Failed to save bill.");
+        }
+    }
+}
